@@ -10,7 +10,7 @@ MIDIFunc.trace(false);
 
 // BANKS
 (
-~bank = 0;
+~bank = 16;
 
 MIDIdef.cc(\pads, {
 	|val, num, chan, src|
@@ -27,20 +27,15 @@ MIDIdef.cc(\pads, {
 )
 
 
-~ccList +++ (~scaleList ++ Array.fill(1)) +++ ~defaultVals;
 
-[1!2, 50, 1!3].flatten
-
-
-[1, 2] +.x [2, 3]
 
 // KNOBS
 (
 ~debugLogs = true;
 
-~ccList = (70..77);
-~scaleList = [50, 1];
-~defaultVals = 0;
+~ccList = (70..76);
+~scaleList = [50] ++ 1.dup(~ccList.size - 1);
+~defaultVals = 0.dup(~ccList.size);
 
 ~knobs = Dictionary();
 ~ccList.do({ |cc, i|
@@ -59,7 +54,7 @@ MIDIdef.cc(\pads, {
 		var sum = curr + n;
 
 		if (~debugLogs, {
-			format("bank: %, bus: %, val: %", ~bank, cc, sum).postln;
+			postf("bank: %, bus: %, val: %\n", ~bank, cc, sum);
 		});
 
 		bus.setSynchronous(sum);
@@ -72,12 +67,11 @@ MIDIdef.cc(\pads, {
 };
 
 
-~count = 0;
-MIDIdef.cc(\test, {
+MIDIdef.cc(\knobs, {
 	|val, num, chan, src|
 
 	~inc_dec.(val, num);
-	//format("%", [val, num, chan, src]).postln;
+	//postf("%\n", [val, num, chan, src]);
 }, ccNum: ~ccList, chan: 0);
 
 )
@@ -113,3 +107,35 @@ Platform.userExtensionDir;
 
 a = MpkMini3.new;
 a.test2;
+
+s.plotTree;
+s.volume.gui;
+
+
+
+(
+MIDIdef.cc(\volume, {
+	|val, num, chan, src|
+
+	var currentVolume = s.volume.volume;
+	var add = 0.1;
+
+	var volumeAdd = { |n|
+		{ s.volume.volume = currentVolume + n }.defer;
+	};
+
+	if(val == 1,
+		{ volumeAdd.(add) },
+		{ volumeAdd.(add.neg) }
+	);
+
+
+}, ccNum: 77);
+
+
+)
+
+
+
+
+
