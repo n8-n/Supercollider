@@ -1,33 +1,4 @@
 
-/*(
-~connect_midi_devices = { arg device, name;
-    // init or refresh MIDIClient end points
-    if(MIDIClient.initialized == false) {
-        MIDIClient.init;
-    } {
-        MIDIClient.list;
-    };
-
-    MIDIClient.sources.do({ arg endPoint;
-        if(device.notNil and: { name.notNil} and: {endPoint.device == device} and: { endPoint.name == name }) {
-            // catch exception thrown when already connected
-            try {
-                // connect SuperCollider out port 0 to MIDI device
-                MIDIOut.connect(0, endPoint.uid);
-            };
-            try {
-                // connect MIDI device to SuperCollider in port 0
-                MIDIIn.connect(0, endPoint.uid);
-            }
-        }
-    })
-
-}
-)
-
-~connect_midi_devices.("MPK mini 3", "MPK mini 3 MIDI 1");*/
-
-
 
 MIDIIn.connectAll;
 s.newBusAllocators;
@@ -37,56 +8,82 @@ MIDIFunc.trace(false);
 
 
 
-
-
+// BANKS
 (
-s.waitForBoot({
-	~ccList = [70, 71];
-	~scaleList = [50, 1];
-	~defaultVals = 0!2;
+~bank = 0;
 
-	~knobs = Dictionary();
-	~ccList.do({ |cc, i|
-		var params = ();
-		params[\scale] = ~scaleList[i];
-		params[\bus] = Bus.control(s, 1).set(~defaultVals[i]);
-		~knobs.put(cc, params);
-	});
+MIDIdef.cc(\pads, {
+	|val, num, chan, src|
 
-	s.sync;
+	// Filter MIDI off values, i.e. return from function.
+	if (val == 0) { ^val };
 
-	~inc_dec = { |val, cc|
-		var bus = ~knobs[cc][\bus];
-		var add = ~knobs[cc][\scale];
+	format("%", [val, num, chan, src]).postln;
+	~bank = num;
+	~bank.postln;
+}, ccNum: (16..23), chan: 9);
 
-		/*var busAdd = { |n|
-			bus.getn(1, { |val|
-				bus.set(val + n);
-			});
-		};*/
 
-		var busAdd = { |n|
-			var curr = bus.getSynchronous();
-			bus.setSynchronous(curr + n);
-		};
+)
 
-		if(val == 1,
-			{ busAdd.(add) },
-			{ busAdd.(add.neg) }
-		);
+
+~ccList +++ (~scaleList ++ Array.fill(1)) +++ ~defaultVals;
+
+[1!2, 50, 1!3].flatten
+
+
+[1, 2] +.x [2, 3]
+
+// KNOBS
+(
+~debugLogs = true;
+
+~ccList = (70..77);
+~scaleList = [50, 1];
+~defaultVals = 0;
+
+~knobs = Dictionary();
+~ccList.do({ |cc, i|
+	var params = ();
+	params[\scale] = ~scaleList[i];
+	params[\bus] = Bus.control(s, 1).set(~defaultVals[i]);
+	~knobs.put(cc, params);
+});
+
+~inc_dec = { |val, cc|
+	var bus = ~knobs[cc][\bus];
+	var add = ~knobs[cc][\scale];
+
+	var busAdd = { |n|
+		var curr = bus.getSynchronous();
+		var sum = curr + n;
+
+		if (~debugLogs, {
+			format("bank: %, bus: %, val: %", ~bank, cc, sum).postln;
+		});
+
+		bus.setSynchronous(sum);
 	};
 
+	if(val == 1,
+		{ busAdd.(add) },
+		{ busAdd.(add.neg) }
+	);
+};
 
-	~count = 0;
-	MIDIdef.cc(\test, {
-		|val, num, chan, src|
 
-		~inc_dec.(val, num);
-		//format("%: %; val: %", ~count, [val, num, chan, src]).postln;
-	}, ccNum: ~ccList, chan: 0);
+~count = 0;
+MIDIdef.cc(\test, {
+	|val, num, chan, src|
 
-});
+	~inc_dec.(val, num);
+	//format("%", [val, num, chan, src]).postln;
+}, ccNum: ~ccList, chan: 0);
+
 )
+
+
+
 
 
 
@@ -114,4 +111,5 @@ Platform.userExtensionDir;
 
 
 
-
+a = MpkMini3.new;
+a.test2;
