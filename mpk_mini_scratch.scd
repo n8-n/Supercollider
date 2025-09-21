@@ -18,9 +18,10 @@ MIDIdef.cc(\pads, {
 	// Filter MIDI off values, i.e. return from function.
 	if (val == 0) { ^val };
 
-	format("%", [val, num, chan, src]).postln;
+	if (~debugLogs, {
+		format("%", [val, num, chan, src]).postln;
+	});
 	~bank = num;
-	~bank.postln;
 }, ccNum: (16..23), chan: 9);
 
 
@@ -77,6 +78,7 @@ MIDIdef.cc(\knobs, {
 )
 
 
+MIDIdef.all;
 
 
 
@@ -106,7 +108,7 @@ Platform.userExtensionDir;
 
 
 a = MpkMini3.new;
-a.test2;
+a;
 
 s.plotTree;
 s.volume.gui;
