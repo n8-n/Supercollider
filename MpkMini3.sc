@@ -1,6 +1,6 @@
 MpkMini3 {
-	var <knobCC, <bankCC, <knobScale, relativeKnobs, volumeKnob, currentBank, buses;
-	var debugLogs = false;
+	var <>knobCC, <>bankCC, <>knobScale, <>relativeKnobs, <>volumeKnob, <>currentBank, <>buses;
+	var <>debugLogs = true;
 
 
 	*new {
@@ -31,17 +31,30 @@ MpkMini3 {
 				knob[\scale] = knobScale;
 				// Should server be configurable?
 				knob[\bus] = Bus.control(Server.default, 1).set(0); // default value = 0
-				knob[\tag] = "Bank%_Knob%".format(i, j).asSymbol; // default tag
-				bankDict.put(j.asSymbol, knob);
+				//knob[\tag] = "Bank%_Knob%".format(i, j).asSymbol; // default tag
+				bankDict.put(kCc, knob);
 			});
 
-			this.buses.put(i.asSymbol, bankDict);
+			this.buses.put(bank, bankDict);
 		});
-	}
 
 
-	debugLogs { | enable = true |
-		this.debugLogs = enable;
+		MIDIdef.cc(\MpkMini3_Knobs, { |val, num, chan, src|
+			this.prIncrementer(val, num);
+		}, ccNum: this.knobCC, chan: 0);
+
+
+		MIDIdef.cc(\MpkMini3_Pads, { |val, num, chan, src|
+			// Filter MIDI off values, i.e. return from function.
+			if (val != 0) {
+				if (this.debugLogs, {
+					postf("Pads: %\n", [val, num, chan, src]);
+				});
+				this.currentBank = num;
+			};
+		}, ccNum: this.bankCC, chan: 9);
+
+		postln("MPK Mini3 initialised");
 	}
 
 
@@ -50,30 +63,48 @@ MpkMini3 {
 	}
 
 
-	tagBank { | bank, tag |
+	/*tagBank { | bank, tag |
 
-	}
+	}*/
 
 
-	tagKnob { | bank, knob, tag |
+	/*tagKnob { | bank, knob, tag |
 		this.buses[bank][knob][\tag] = tag;
-	}
+	}*/
 
 
-	getBus { | bank, knob, asKr = true |
-		if (knob == knobCC.size - 1 && volumeKnob) {
+	getBus { | bank, knob |
+		if (knob == (this.knobCC.size) && this.volumeKnob) {
 			warn("Final knob is reserved for master volume control");
 		} {
-			if (asKr) {
-				^this.buses[bank][knob][\bus].kr;
-			} {
-				^this.buses[bank][knob][\bus];
-			}
+			^this.buses[bank][knob][\bus];
 		}
 	}
 
 
 	relativeKnobsMode { | enable = true |
 		this.relativeKnobsMode = enable;
+	}
+
+
+	prIncrementer { |val, cc|
+		var bus = this.buses[currentBank][cc][\bus];
+		var toAdd = this.buses[currentBank][cc][\scale];
+
+		var busAdd = { |n|
+			var curr = bus.getSynchronous();
+			var sum = curr + n;
+
+			if (this.debugLogs, {
+				postf("bank: %, bus: %, val: %\n", this.currentBank, cc, sum);
+			});
+
+			bus.setSynchronous(sum);
+		};
+
+		if(val == 1,
+			{ busAdd.(toAdd) },
+			{ busAdd.(toAdd.neg) }
+		);
 	}
 }
