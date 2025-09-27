@@ -1,6 +1,6 @@
 MpkMini3 {
 	var <>knobCC, <>bankCC, <>knobScale, <>relativeKnobs, <>volumeKnob, <>currentBank, <>buses;
-	var <>debugLogs = true;
+	var <>debugLogs = false;
 	var <>server;
 
 
@@ -38,16 +38,6 @@ MpkMini3 {
 	setKnobScale { | bank, knob, scale |
 		this.buses[bank][knob][\scale] = scale;
 	}
-
-
-	/*tagBank { | bank, tag |
-
-	}*/
-
-
-	/*tagKnob { | bank, knob, tag |
-		this.buses[bank][knob][\tag] = tag;
-	}*/
 
 
 	getBus { | bank, knob |
@@ -98,7 +88,6 @@ MpkMini3 {
 				knob[\scale] = knobScale;
 				// Should server be configurable?
 				knob[\bus] = Bus.control(this.server, 1).set(0); // default value = 0
-				//knob[\tag] = "Bank%_Knob%".format(i, j).asSymbol; // default tag
 				bankDict.put(kCc, knob);
 			});
 

@@ -89,13 +89,15 @@ p = {
 )
 
 
-p = { b.poll(20) }.play;
+p = { b.kr.poll(20) }.play;
 
 (
 p.free;
 b.set(0);
 )
 
+
+MIDIIn.connectAll;
 
 
 
@@ -105,41 +107,69 @@ Platform.userExtensionDir;
 
 a = MpkMini3.new;
 a.debugLogs_ = true;
-b = a.getBus(16, 70);
+a.setKnobScale(16, 71, 100);
+b = a.getBus(16, 70, false);
+
+w = {b.kr.poll(2)}.play;
 
 b.set(0);
 
 s.plotTree;
 s.volume.gui;
 
-#[1, 2, 3].size - 1
+v = [1, 2, 5, 6, 7];
+
+v[0:6];
+
+v[v.size - 1]
+
+j = true;
+
+if (j == false) { postln("hello") };
 
 (
-MIDIdef.cc(\volume, {
-	|val, num, chan, src|
+MIDIdef.cc(\volume, { |val, num, chan, src|
 
 	var currentVolume = s.volume.volume;
-	var add = 0.1;
+	var toAdd = 0.1;
 
 	var volumeAdd = { |n|
 		{ s.volume.volume = currentVolume + n }.defer;
 	};
 
 	if(val == 1,
-		{ volumeAdd.(add) },
-		{ volumeAdd.(add.neg) }
+		{ volumeAdd.(toAdd) },
+		{ volumeAdd.(toAdd.neg) }
 	);
-
-
 }, ccNum: 77);
 
 )
 
+s.volume.gui;
 
 d = Dictionary();
 d[16] = 122
 
-d[16]
+
+
+(
+SynthDef(\test, {
+	arg freqBus, mixBus;
+	var sig = SinOsc.ar(In.kr(freqBus));
+	sig = FreeVerb.ar(sig, In.kr(mixBus).wrap(0, 1));
+	Out.ar(0, sig!2);
+}).add;
+)
+
+
+a.setKnobScale(16, 71, 0.01);
+x = Synth(\test, [\freqBus, a.getBus(16, 70),\mixBus, a.getBus(16, 71)]);
+
+x.free;
+
+
+s.plotTree;
+
 
 
 
