@@ -68,9 +68,7 @@ MIDIdef.cc(\pads, {
 };
 
 
-MIDIdef.cc(\knobs, {
-	|val, num, chan, src|
-
+MIDIdef.cc(\knobs, { |val, num, chan, src|
 	~inc_dec.(val, num);
 	//postf("%\n", [val, num, chan, src]);
 }, ccNum: ~ccList, chan: 0);
@@ -91,11 +89,11 @@ p = {
 )
 
 
-p = { ~knobs[70][\bus].kr.poll(20) }.play;
+p = { b.poll(20) }.play;
 
 (
 p.free;
-~knobs[70][\bus].set(0);
+b.set(0);
 )
 
 
@@ -105,15 +103,16 @@ p.free;
 Platform.userExtensionDir;
 
 
-
-
 a = MpkMini3.new;
-a;
+a.debugLogs_ = true;
+b = a.getBus(16, 70);
+
+b.set(0);
 
 s.plotTree;
 s.volume.gui;
 
-
+#[1, 2, 3].size - 1
 
 (
 MIDIdef.cc(\volume, {
@@ -134,8 +133,13 @@ MIDIdef.cc(\volume, {
 
 }, ccNum: 77);
 
-
 )
+
+
+d = Dictionary();
+d[16] = 122
+
+d[16]
 
 
 
