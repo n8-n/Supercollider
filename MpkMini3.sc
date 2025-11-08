@@ -1,25 +1,28 @@
 MpkMini3 {
-	var <>knobCC, <>bankCC, <>knobScale, <>relativeKnobs, <>volumeKnob, <>currentBank, <>buses;
-	var <>debugLogs = false;
+	var <>knobCC, <>bankCC, <>knobScale, <>relativeKnobs, <>volumeKnob, <>debugLogs, <>currentBank, <>buses;
 	var <>server;
+
+	// TODO:
+	//  - min and max for relative knobs
 
 
 	*new {
 		arg knobCC = #[70, 71, 72, 73, 74, 75, 76, 77], bankCC = #[16, 17, 18, 19, 20, 21, 22, 23],
-		knobScale = 1, relativeKnobs = true, volumeKnob = true;
+		knobScale = 1, relativeKnobs = true, volumeKnob = true, debugLogs = false;
 
-		^super.new.init(knobCC, bankCC, knobScale, relativeKnobs, volumeKnob);
+		^super.new.init(knobCC, bankCC, knobScale, relativeKnobs, volumeKnob, debugLogs);
 	}
 
 
 	init {
-		arg knobCC, bankCC, knobScale, relativeKnobs, volumeKnob;
+		arg knobCC, bankCC, knobScale, relativeKnobs, volumeKnob, debugLogs;
 
 		this.knobCC = knobCC;
 		this.bankCC = bankCC;
 		this.knobScale = knobScale;
 		this.relativeKnobs = relativeKnobs;
 		this.volumeKnob = volumeKnob;
+		this.debugLogs = debugLogs;
 		this.currentBank = bankCC[0];
 		this.buses = Dictionary.new();
 		this.server = Server.default;
@@ -51,12 +54,7 @@ MpkMini3 {
 	}
 
 
-	relativeKnobsMode { | enable = true |
-		this.relativeKnobsMode = enable;
-	}
-
-
-	prIncrementer { |val, cc|
+	prKnobIncrementer { |val, cc|
 		var bus = this.buses[currentBank][cc][\bus];
 		var toAdd = this.buses[currentBank][cc][\scale];
 
@@ -64,13 +62,7 @@ MpkMini3 {
 			var curr = bus.getSynchronous();
 			var sum = curr + n;
 
-			// Don't print if final bus reserved for volume
-			var finalKnob = this.knobCC[this.knobCC.size - 1];
-			var finalBusVolume = this.volumeKnob and: { cc == finalKnob };
-
-			if (this.debugLogs and: { finalBusVolume == false }) {
-				postf("bank: %, bus: %, val: %\n", this.currentBank, cc, sum);
-			};
+			this.prBusDebugPrint(cc, sum);
 
 			bus.setSynchronous(sum);
 		};
@@ -79,6 +71,24 @@ MpkMini3 {
 			{ busAdd.(toAdd) },
 			{ busAdd.(toAdd.neg) }
 		);
+	}
+
+
+	prAbsoluteKnobSet { |val, cc|
+		var bus = this.buses[currentBank][cc][\bus];
+		this.prBusDebugPrint(cc, val);
+		bus.setSynchronous(val);
+	}
+
+
+	prBusDebugPrint { | cc, val |
+		// Don't print if final bus reserved for volume
+		var finalKnob = this.knobCC[this.knobCC.size - 1];
+		var finalBusVolume = this.volumeKnob and: { cc == finalKnob };
+
+		if (this.debugLogs and: { finalBusVolume == false }) {
+			postf("bank: %, bus: %, val: %\n", this.currentBank, cc, val);
+		};
 	}
 
 
@@ -101,9 +111,15 @@ MpkMini3 {
 
 
 	prInitMidiDefs {
-		MIDIdef.cc(\MpkMini3_Knobs, { |val, num, chan, src|
-			this.prIncrementer(val, num);
-		}, ccNum: this.knobCC, chan: 0);
+		if (this.relativeKnobs) {
+			MIDIdef.cc(\MpkMini3_Knobs_Relative, { |val, num, chan, src|
+				this.prKnobIncrementer(val, num);
+			}, ccNum: this.knobCC, chan: 0);
+		} {
+			MIDIdef.cc(\MpkMini3_Knobs_Absolute, { |val, num, chan, src|
+				this.prAbsoluteKnobSet(val, num);
+			}, ccNum: this.knobCC, chan: 0);
+		};
 
 
 		MIDIdef.cc(\MpkMini3_Pads, { |val, num, chan, src|
@@ -127,7 +143,7 @@ MpkMini3 {
 				var volumeAdd = { |n|
 					var newVolume = currentVolume + n;
 
-					if (this.debugLogs, {
+					if (this.debugLogs == true, {
 						postf("Volume: %d\n", newVolume);
 					});
 
