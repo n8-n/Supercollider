@@ -43,7 +43,7 @@ MpkMini3 {
 	getBus { | bank, knob |
 		var finalKnob = this.knobCC[this.knobCC.size - 1];
 
-		if (knob == finalKnob && this.volumeKnob) {
+		if (this.volumeKnob and: { knob == finalKnob }) {
 			warn("Final knob is reserved for master volume control");
 		} {
 			^this.buses[bank][knob][\bus];
@@ -64,9 +64,13 @@ MpkMini3 {
 			var curr = bus.getSynchronous();
 			var sum = curr + n;
 
-			if (this.debugLogs, {
+			// Don't print if final bus reserved for volume
+			var finalKnob = this.knobCC[this.knobCC.size - 1];
+			var finalBusVolume = this.volumeKnob and: { cc == finalKnob };
+
+			if (this.debugLogs and: { finalBusVolume == false }) {
 				postf("bank: %, bus: %, val: %\n", this.currentBank, cc, sum);
-			});
+			};
 
 			bus.setSynchronous(sum);
 		};
@@ -121,7 +125,13 @@ MpkMini3 {
 				var toAdd = 0.1;
 
 				var volumeAdd = { |n|
-					{ this.server.volume.volume = currentVolume + n }.defer;
+					var newVolume = currentVolume + n;
+
+					if (this.debugLogs, {
+						postf("Volume: %d\n", newVolume);
+					});
+
+					{ this.server.volume.volume = newVolume }.defer;
 				};
 
 				if(val == 1,
@@ -135,21 +145,28 @@ MpkMini3 {
 
 
 	prConnectMidi { | device, name |
+		var connected = false;
+
 		if(MIDIClient.initialized == false) {
 			MIDIClient.init;
 		};
 
 		MIDIClient.sources.do({ arg endPoint;
 			if(device.notNil
-				and: { name.notNil}
-				and: {endPoint.device == device}
+				and: { name.notNil }
+				and: { endPoint.device == device }
 				and: { endPoint.name == name }) {
 				// catch exception thrown when already connected
 				try {
 					// connect MIDI device to SuperCollider in port 0
 					MIDIIn.connect(0, endPoint.uid);
+					connected = true;
 				}
-			}
-		})
+			};
+		});
+
+		if (connected == false) {
+			postf("Could not find device: %\n", device);
+		};
 	}
 }
